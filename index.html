@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Yumurta Avı</title>
+<style>
+  :root { --zemin:#1f2a24; --ust:#17201b; --vurgu:#d9b44a; --yazi:#f1efe6; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; background:var(--zemin); color:var(--yazi);
+    font-family:system-ui,-apple-system,"Segoe UI",sans-serif; overflow:hidden;
+    touch-action:manipulation; user-select:none; -webkit-user-select:none; }
+  #ust { height:52px; display:flex; justify-content:space-between; align-items:center;
+    padding:0 18px; background:var(--ust); font-size:20px; font-weight:700; }
+  #alan { position:absolute; top:52px; left:0; right:0; bottom:0; }
+  #hedef { position:absolute; width:68px; height:68px; font-size:52px; line-height:68px;
+    text-align:center; display:none; cursor:pointer; }
+  #menu { position:absolute; inset:0; background:rgba(23,32,27,.94); display:flex;
+    flex-direction:column; align-items:center; justify-content:center; gap:14px;
+    text-align:center; padding:24px; }
+  #menu h1 { margin:0; font-size:30px; }
+  #menu p { margin:0; max-width:300px; line-height:1.45; opacity:.85; }
+  button { font:inherit; font-size:19px; font-weight:700; padding:13px 30px; border:0;
+    border-radius:10px; background:var(--vurgu); color:#1b1b14; }
+  button.ikincil { background:transparent; color:var(--yazi); border:2px solid var(--vurgu); }
+  button:focus-visible { outline:3px solid #fff; outline-offset:2px; }
+</style>
+</head>
+<body>
+<div id="ust"><span>Skor: <b id="skor">0</b></span><span>Süre: <b id="sure">30</b></span></div>
+<div id="alan"><div id="hedef" role="button" aria-label="Yumurta">🥚</div></div>
+
+<div id="menu">
+  <h1 id="baslik">Yumurta Avı</h1>
+  <p id="aciklama">30 saniye içinde yumurtalara dokunun. Her yumurta 1 puan.</p>
+  <p id="sonuc"></p>
+  <button id="basla">Başla</button>
+  <button id="paylas" class="ikincil" style="display:none">Skoru paylaş</button>
+</div>
+
+<script>
+const SURE = 30;
+let skor = 0, kalan = SURE, calisiyor = false, sayac = null, atlama = null, rekor = 0;
+try { rekor = Number(localStorage.getItem("yumurta_rekor")) || 0; } catch (e) {}
+
+const $ = (id) => document.getElementById(id);
+const hedef = $("hedef");
+
+function yerlestir() {
+  const a = $("alan").getBoundingClientRect();
+  hedef.style.left = Math.random() * (a.width - 68) + "px";
+  hedef.style.top = Math.random() * (a.height - 68) + "px";
+}
+
+function atla() {
+  if (!calisiyor) return;
+  yerlestir();
+  atlama = setTimeout(atla, Math.max(500, 1100 - skor * 12));
+}
+
+function basla() {
+  skor = 0; kalan = SURE; calisiyor = true;
+  $("skor").textContent = 0; $("sure").textContent = kalan;
+  $("menu").style.display = "none";
+  hedef.style.display = "block";
+  clearTimeout(atlama); clearInterval(sayac);
+  atla();
+  sayac = setInterval(() => {
+    kalan--;
+    $("sure").textContent = kalan;
+    if (kalan <= 0) bitir();
+  }, 1000);
+}
+
+function bitir() {
+  calisiyor = false;
+  clearInterval(sayac); clearTimeout(atlama);
+  hedef.style.display = "none";
+  const yeniRekor = skor > rekor;
+  if (yeniRekor) {
+    rekor = skor;
+    try { localStorage.setItem("yumurta_rekor", rekor); } catch (e) {}
+  }
+  $("baslik").textContent = "Süre doldu";
+  $("aciklama").textContent = "Skorunuz: " + skor;
+  $("sonuc").textContent = yeniRekor ? "Yeni rekor!" : "Rekorunuz: " + rekor;
+  $("basla").textContent = "Tekrar oyna";
+  if (window.TelegramGameProxy) $("paylas").style.display = "";
+  $("menu").style.display = "flex";
+}
+
+hedef.addEventListener("pointerdown", (e) => {
+  if (!calisiyor) return;
+  e.preventDefault();
+  skor++;
+  $("skor").textContent = skor;
+  clearTimeout(atlama);
+  atla();
+});
+
+$("basla").addEventListener("click", basla);
+$("paylas").addEventListener("click", () => {
+  try { TelegramGameProxy.shareScore(); } catch (e) {}
+});
+</script>
+</body>
+</html>
